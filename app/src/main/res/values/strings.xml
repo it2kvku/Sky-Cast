@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SkyCast</string>
+    <string name="weather_api_key">YOUR_API_KEY_HERE</string>
+    <!-- Bottom Navigation Items -->
+    <string name="home">Home</string>
+    <string name="search">Search</string>
+    <string name="chatbot">Chatbot</string>
+    <string name="tomorrow">Tomorrow</string>
+    <string name="sevenday">7 Days</string>
+    <string name="settings">Settings</string>
+</resources>
