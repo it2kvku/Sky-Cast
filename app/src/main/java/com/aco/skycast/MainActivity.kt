@@ -33,6 +33,7 @@ import com.aco.skycast.ui.navigation.AppNavigation
 import com.aco.skycast.ui.navigation.BottomNavItem
 import com.aco.skycast.ui.screens.*
 import com.aco.skycast.ui.theme.SkyCastTheme
+import com.google.firebase.FirebaseApp
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
@@ -41,6 +42,8 @@ class MainActivity : ComponentActivity() {
     private lateinit var weatherViewModel: WeatherViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // In your Application class or MainActivity onCreate
+        FirebaseApp.initializeApp(this)
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
 

@@ -1,5 +1,8 @@
 package com.aco.skycast.ui.screens.auth
 
+import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -11,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -20,6 +24,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aco.skycast.data.model.AuthUiState
 import com.aco.skycast.data.model.AuthViewModel
+
+private const val TAG = "LoginScreen"
 
 @Composable
 fun LoginScreen(
@@ -32,21 +38,31 @@ fun LoginScreen(
     val passwordVisible = remember { mutableStateOf(false) }
 
     val authState by authViewModel.authState.collectAsState()
-
+    val context = LocalContext.current
     var showError by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
 
+    // Google Sign-In result handler
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        Log.d(TAG, "Google sign-in result: ${result.resultCode}")
+        authViewModel.handleGoogleSignInResult(result.data)
+    }
+    
     // Check authentication state
     LaunchedEffect(authState) {
         when (authState) {
             is AuthUiState.Success -> {
                 val user = (authState as AuthUiState.Success).user
                 if (user != null) {
+                    Log.d(TAG, "Login successful for user: ${user.displayName}")
                     onLoginSuccess()
                 }
             }
             is AuthUiState.Error -> {
                 errorMessage = (authState as AuthUiState.Error).message
+                Log.e(TAG, "Auth error: $errorMessage")
                 showError = true
             }
             else -> {}
@@ -157,9 +173,16 @@ fun LoginScreen(
             modifier = Modifier.padding(vertical = 8.dp)
         )
 
+        // Google Sign-In Button
         OutlinedButton(
-            onClick = { /* Handle Google login */ },
-            modifier = Modifier.fillMaxWidth()
+            onClick = { 
+                showError = false
+                Log.d(TAG, "Starting Google sign-in flow")
+                authViewModel.startGoogleSignIn(context, googleSignInLauncher) 
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp)
         ) {
             Icon(imageVector = Icons.Default.AccountCircle, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
@@ -167,7 +190,7 @@ fun LoginScreen(
         }
 
         OutlinedButton(
-            onClick = { /* Handle Facebook login */ },
+            onClick = { /* Facebook login implementation */ },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp)

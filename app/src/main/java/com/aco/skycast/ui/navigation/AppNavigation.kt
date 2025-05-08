@@ -1,69 +1,73 @@
 package com.aco.skycast.ui.navigation
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.aco.skycast.data.model.AuthUiState
 import com.aco.skycast.data.model.AuthViewModel
 import com.aco.skycast.data.model.WeatherViewModel
-import com.aco.skycast.ui.screens.*
+import com.aco.skycast.ui.screens.ChatBotDaily
+import com.aco.skycast.ui.screens.SearchScreen
+import com.aco.skycast.ui.screens.SevenDayScreen
+import com.aco.skycast.ui.screens.TomorrowScreen
+import com.aco.skycast.ui.screens.UserScreen
+import com.aco.skycast.ui.screens.WeatherScreen
 import com.aco.skycast.ui.screens.auth.LoginScreen
 import com.aco.skycast.ui.screens.auth.SignUpScreen
+
+private const val TRANSITION_DURATION = 300
 
 @Composable
 fun AppNavigation(
     navController: NavHostController,
     weatherViewModel: WeatherViewModel,
     authViewModel: AuthViewModel,
+    modifier: Modifier = Modifier,
     showBottomBar: (Boolean) -> Unit
 ) {
-    val authState by authViewModel.authState.collectAsState()
-
-    // Check if user is logged in and update bottom bar visibility
-    LaunchedEffect(authState) {
-        when (authState) {
-            is AuthUiState.Success -> {
-                val user = (authState as AuthUiState.Success).user
-                showBottomBar(user != null)
-
-                // If user logs in, navigate to home
-                if (user != null && navController.currentDestination?.route !in listOf(
-                        BottomNavItem.Home.route,
-                        BottomNavItem.Search.route,
-                        BottomNavItem.ChatBot.route,
-                        BottomNavItem.Tomorrow.route,
-                        BottomNavItem.SevenDay.route,
-                        BottomNavItem.UserSettings.route
-                    )) {
-                    navController.navigate(BottomNavItem.Home.route) {
-                        popUpTo("login") {
-                            inclusive = true
-                        }
-                    }
-                }
-            }
-            else -> {}
-        }
-    }
-
     NavHost(
         navController = navController,
-        startDestination = if (authViewModel.getCurrentUser() != null) BottomNavItem.Home.route else "login"
+        startDestination = if (authViewModel.getCurrentUser() != null) BottomNavItem.Home.route else "login",
+        modifier = modifier,
+        enterTransition = {
+            slideIntoContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                animationSpec = tween(TRANSITION_DURATION)
+            ) + fadeIn(animationSpec = tween(TRANSITION_DURATION))
+        },
+        exitTransition = {
+            slideOutOfContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.Start,
+                animationSpec = tween(TRANSITION_DURATION)
+            ) + fadeOut(animationSpec = tween(TRANSITION_DURATION))
+        },
+        popEnterTransition = {
+            slideIntoContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                animationSpec = tween(TRANSITION_DURATION)
+            ) + fadeIn(animationSpec = tween(TRANSITION_DURATION))
+        },
+        popExitTransition = {
+            slideOutOfContainer(
+                towards = AnimatedContentTransitionScope.SlideDirection.End,
+                animationSpec = tween(TRANSITION_DURATION)
+            ) + fadeOut(animationSpec = tween(TRANSITION_DURATION))
+        }
     ) {
-        // Auth screens
         composable("login") {
+            showBottomBar(false)
             LoginScreen(
                 authViewModel = authViewModel,
                 onLoginSuccess = {
                     navController.navigate(BottomNavItem.Home.route) {
-                        popUpTo("login") {
-                            inclusive = true
-                        }
+                        popUpTo("login") { inclusive = true }
                     }
+                    showBottomBar(true)
                 },
                 onSignUpClick = {
                     navController.navigate("signup")
@@ -72,35 +76,33 @@ fun AppNavigation(
         }
 
         composable("signup") {
+            showBottomBar(false)
             SignUpScreen(
                 authViewModel = authViewModel,
                 onSignUpSuccess = {
                     navController.navigate(BottomNavItem.Home.route) {
-                        popUpTo("signup") {
-                            inclusive = true
-                        }
+                        popUpTo("login") { inclusive = true }
                     }
+                    showBottomBar(true)
                 },
                 onLoginClick = {
-                    navController.navigate("login") {
-                        popUpTo("signup") {
-                            inclusive = true
-                        }
-                    }
+                    navController.popBackStack()
                 }
             )
         }
 
-        // Main screens - accessible only when logged in
         composable(BottomNavItem.Home.route) {
+            showBottomBar(true)
             WeatherScreen(viewModel = weatherViewModel)
         }
 
         composable(BottomNavItem.Search.route) {
+            showBottomBar(true)
             SearchScreen(viewModel = weatherViewModel)
         }
 
         composable(BottomNavItem.ChatBot.route) {
+            showBottomBar(true)
             ChatBotDaily(
                 viewModel = weatherViewModel,
                 onBackPressed = { navController.popBackStack() }
@@ -108,6 +110,7 @@ fun AppNavigation(
         }
 
         composable(BottomNavItem.Tomorrow.route) {
+            showBottomBar(true)
             TomorrowScreen(
                 viewModel = weatherViewModel,
                 latitude = weatherViewModel.latitude,
@@ -116,6 +119,7 @@ fun AppNavigation(
         }
 
         composable(BottomNavItem.SevenDay.route) {
+            showBottomBar(true)
             SevenDayScreen(
                 viewModel = weatherViewModel,
                 latitude = weatherViewModel.latitude,
@@ -124,6 +128,7 @@ fun AppNavigation(
         }
 
         composable(BottomNavItem.UserSettings.route) {
+            showBottomBar(true)
             UserScreen(
                 authViewModel = authViewModel,
                 onSignOut = {
@@ -131,6 +136,7 @@ fun AppNavigation(
                     navController.navigate("login") {
                         popUpTo(0) { inclusive = true }
                     }
+                    showBottomBar(false)
                 }
             )
         }
