@@ -42,6 +42,8 @@ import com.google.firebase.FirebaseApp
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import android.Manifest
+import com.aco.skycast.BuildConfig
+import com.aco.skycast.ui.navigation.BottomNavBar
 
 class MainActivity : ComponentActivity() {
 
@@ -75,7 +77,7 @@ class MainActivity : ComponentActivity() {
 
         val weatherApi = retrofit.create(WeatherApi::class.java)
 
-        val weatherRepository = WeatherRepository(weatherApi, "SK2GNSWPUS93N52XLXLUKY37L") // Replace with your actual API key
+        val weatherRepository = WeatherRepository(weatherApi, BuildConfig.WEATHER_API_KEY) // Replace with your actual API key
 
 
         // Initialize ViewModel with Factory
@@ -94,8 +96,8 @@ class MainActivity : ComponentActivity() {
 
                 Scaffold(
                     bottomBar = {
-                        // Only show bottom bar if user is logged in
                         if (showBottomBar) {
+                            BottomNavBar(navController = navController)
                             NavigationBar {
                                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                                 val currentDestination = navBackStackEntry?.destination

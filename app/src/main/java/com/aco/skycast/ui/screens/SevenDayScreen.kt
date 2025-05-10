@@ -20,19 +20,11 @@ import androidx.compose.ui.unit.sp
 import com.aco.skycast.data.api.WeatherDay
 import com.aco.skycast.data.model.WeatherUiState
 import com.aco.skycast.data.model.WeatherViewModel
+import com.aco.skycast.utils.WeatherUtils
 import java.text.SimpleDateFormat
 import java.util.*
 
-// Color definitions based on requirements
-private val BackgroundColor = Color(0xFF7CC1F0)
-private val CardBackgroundColor = Color.White // #FFFFFF
-private val HumidityIconColor = Color(0xFF90CAF9)
-private val WindIconColor = Color(0xFF81D4FA)
-private val MetricsTextColor = Color(0xFF666666)
-private val WeatherEmojiColor = Color(0xFFFFD54F)
-private val TemperatureHighColor = Color(0xFF212121)
-private val TemperatureLowColor = Color(0xFF757575)
-private val DividerColor = Color.LightGray.copy(alpha = 0.3f)
+
 
 @Composable
 fun SevenDayScreen(
@@ -49,7 +41,7 @@ fun SevenDayScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BackgroundColor)
+            .background(WeatherUtils.BackgroundColor)
             .padding(top = 16.dp)
     ) {
         Text(
@@ -124,7 +116,7 @@ fun ForecastDayCard(day: WeatherDay) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackgroundColor),
+        colors = CardDefaults.cardColors(containerColor = WeatherUtils.CardBackgroundColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
@@ -141,12 +133,12 @@ fun ForecastDayCard(day: WeatherDay) {
                 Text(
                     text = getWeatherEmojiFromCondition(day.conditions),
                     fontSize = 38.sp,
-                    color = WeatherEmojiColor
+                    color = WeatherUtils.WeatherEmojiColor
                 )
                 Text(
                     text = day.conditions,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MetricsTextColor,
+                    color = WeatherUtils.MetricsTextColor,
                     maxLines = 2,
                     textAlign = TextAlign.Center
                 )
@@ -156,7 +148,7 @@ fun ForecastDayCard(day: WeatherDay) {
 
             // Vertical divider
             Divider(
-                color = DividerColor,
+                color = WeatherUtils.DividerColor,
                 modifier = Modifier
                     .height(60.dp)
                     .width(1.dp)
@@ -170,7 +162,7 @@ fun ForecastDayCard(day: WeatherDay) {
                     text = date,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = TemperatureHighColor
+                    color = WeatherUtils.TemperatureHighColor
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -181,14 +173,14 @@ fun ForecastDayCard(day: WeatherDay) {
                         imageVector = Icons.Outlined.WaterDrop,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
-                        tint = HumidityIconColor
+                        tint = WeatherUtils.HumidityIconColor
                     )
                     Text(
                         text = " ${day.precipprob.toInt()}%",
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Medium,
                         fontSize = 14.sp,
-                        color = MetricsTextColor
+                        color = WeatherUtils.MetricsTextColor
                     )
 
                     Spacer(modifier = Modifier.width(16.dp))
@@ -198,14 +190,14 @@ fun ForecastDayCard(day: WeatherDay) {
                         imageVector = Icons.Outlined.Air,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
-                        tint = WindIconColor
+                        tint = WeatherUtils.WindIconColor
                     )
                     Text(
                         text = " ${day.windspeed.toInt()} km/h",
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Medium,
                         fontSize = 14.sp,
-                        color = MetricsTextColor
+                        color = WeatherUtils.MetricsTextColor
                     )
                 }
             }
@@ -219,14 +211,14 @@ fun ForecastDayCard(day: WeatherDay) {
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp,
-                    color = TemperatureHighColor
+                    color = WeatherUtils.TemperatureHighColor
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "${day.tempmin.toInt()}°",
                     style = MaterialTheme.typography.bodyMedium,
                     fontSize = 16.sp,
-                    color = TemperatureLowColor
+                    color = WeatherUtils.TemperatureLowColor
                 )
             }
         }

@@ -11,16 +11,17 @@ interface WeatherApi {
         @Path("longitude") longitude: Double,
         @Query("key") apiKey: String,
         @Query("unitGroup") unitGroup: String = "metric",
-        @Query("include") include: String = "current,days",
+        @Query("include") include: String = "current,days,hours",
         @Query("contentType") contentType: String = "json"
+
     ): WeatherResponse
-    
+
     @GET("{location}")
     suspend fun getWeather(
         @Path("location") location: String,
         @Query("key") key: String,
         @Query("unitGroup") unitGroup: String = "metric",
-        @Query("include") include: String = "current,days",
+        @Query("include") include: String = "current,days,hours",
         @Query("contentType") contentType: String = "json"
     ): WeatherResponse
 }
