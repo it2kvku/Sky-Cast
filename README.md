@@ -7,12 +7,17 @@
 
 ---
 
-🎯 Features
-✅ Real-Time Weather Updates: Stay informed with accurate, real-time weather information, including temperature, humidity, wind speed, and more.
-✅ Interactive Weather Map: Explore an interactive map with overlays for rain, temperature, and wind patterns, providing a visual understanding of weather conditions.
-✅ Custom Notifications: Set up personalized notifications for weather alerts, such as severe storms, heavy rain, or extreme temperatures, tailored to your location.
+
+
+## 🎯 Features
+
+- ✅ **Real-Time Weather Updates**: Stay informed with accurate, real-time weather information, including temperature, humidity, wind speed, and more.
+- ✅ **Interactive Weather Map**: Explore an interactive map with overlays for rain, temperature, and wind patterns, providing a visual understanding of weather conditions.
+- ✅ **Custom Notifications**: Set up personalized notifications for weather alerts, such as severe storms, heavy rain, or extreme temperatures, tailored to your location.
+
 ---
 
+Feel free to let me know the specific features of your project, and I can tailor this section further!
 ## 📦 Installation
 
 Follow these steps to set up the project locally:
