@@ -35,9 +35,51 @@ Follow these steps to set up the project locally:
 
 ---
 
+Here’s an example of how you can provide a concise guide and examples for the **Usage** section of your README. This will help users understand how to interact with your project:
+
+---
+
 ## 🛠️ Usage
 
-[Provide a concise guide or add examples on how to use the project.]
+Follow these steps to use the Sky-Cast project:
+
+### 1. Clone the Repository
+First, clone the repository to your local machine:
+```bash
+git clone https://github.com/it2kvku/Sky-Cast.git
+cd Sky-Cast
+```
+
+### 2. Build the Project
+Use your preferred IDE (e.g., IntelliJ IDEA) or the command line to build the project:
+```bash
+./gradlew build
+```
+
+### 3. Run the Application
+Run the application using the following command:
+```bash
+./gradlew run
+```
+
+### 4. Example Usage
+Once the application is running:
+- **Input your Location**: Enter your city or coordinates to get accurate weather forecasts.
+- **View Weather Data**: Access real-time weather updates, including temperature, humidity, and wind speed.
+- **Explore the Map**: Use the interactive weather map to view overlays like rainfall and temperature patterns.
+
+### 5. Customization
+To customize notifications or settings, modify the `config.json` file:
+```json
+{
+  "notifications": true,
+  "units": "metric",
+  "refreshInterval": 15
+}
+```
+
+---
+
 
 ---
 
