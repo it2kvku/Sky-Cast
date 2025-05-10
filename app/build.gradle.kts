@@ -155,4 +155,6 @@ dependencies {
     // With the actual Azure AI library you need, for example:
     implementation("com.azure:azure-core:1.40.0")
     implementation ("com.azure:azure-ai-openai:1.0.0-beta.1")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.6.2")
 }

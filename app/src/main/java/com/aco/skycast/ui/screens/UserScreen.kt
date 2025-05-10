@@ -1,5 +1,6 @@
 package com.aco.skycast.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,51 +22,28 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aco.skycast.data.model.AuthViewModel
-
-private val BlueSolidColor = Color(0xFF1976D2)
+import com.aco.skycast.data.model.PreferencesViewModel
+import com.aco.skycast.utils.WeatherUtils
+import kotlinx.coroutines.delay
 
 @Composable
 fun UserScreen(authViewModel: AuthViewModel, onSignOut: () -> Unit) {
-
     val scrollState = rememberScrollState()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF5F5F5))
+            .background(WeatherUtils.LightBackground)
             .verticalScroll(scrollState)
     ) {
         // User header section
-        UserProfileHeader()
+        UserProfileHeader(authViewModel)
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Account settings section
-        SettingsSection(
-            title = "Account Settings",
-            items = listOf(
-                SettingsItem("Profile", Icons.Default.Person) {},
-                SettingsItem("Notifications", Icons.Default.Notifications) {},
-                SettingsItem("Saved Locations", Icons.Default.LocationOn) {}
-            )
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // App preferences section
-        SettingsSection(
-            title = "App Information",
-            items = listOf(
-                SettingsItem("About", Icons.Default.Info) {},
-                SettingsItem("Help & Support", Icons.Default.Email) {},  // Using Email which is available
-                SettingsItem("Privacy Policy", Icons.Default.Lock) {}
-            )
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Weather alerts preferences
+        // Weather preferences section
         WeatherAlertPreferences()
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -73,13 +52,13 @@ fun UserScreen(authViewModel: AuthViewModel, onSignOut: () -> Unit) {
         SettingsSection(
             title = "App Information",
             items = listOf(
-                SettingsItem("About", Icons.Default.Info) {},
-                SettingsItem("Help & Support", Icons.Default.Phone) {},
-                SettingsItem("Privacy Policy", Icons.Default.Lock) {}
+                SettingsItem("About", Icons.Outlined.Info) {},
+                SettingsItem("Help & Support", Icons.Outlined.Support) {},
+                SettingsItem("Privacy Policy", Icons.Outlined.PrivacyTip) {}
             )
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         // Sign out button
         SignOutButton(onSignOut = onSignOut)
@@ -89,10 +68,42 @@ fun UserScreen(authViewModel: AuthViewModel, onSignOut: () -> Unit) {
 }
 
 @Composable
-fun UserProfileHeader() {
+fun UserProfileHeader(authViewModel: AuthViewModel) {
+    val currentUser = authViewModel.getCurrentUser()
+    var showDialog by remember { mutableStateOf(false) }
+    var newDisplayName by remember { mutableStateOf("") }
+
+    // Show dialog if state is true
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("Edit Profile") },
+            text = {
+                TextField(
+                    value = newDisplayName,
+                    onValueChange = { newDisplayName = it },
+                    label = { Text("New Username") }
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    authViewModel.updateDisplayName(newDisplayName)
+                    showDialog = false
+                }) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                Button(onClick = { showDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = BlueSolidColor,
+        color = WeatherUtils.BlueSolidColor,
         shadowElevation = 4.dp
     ) {
         Column(
@@ -101,10 +112,9 @@ fun UserProfileHeader() {
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Profile avatar
             Box(
                 modifier = Modifier
-                    .size(86.dp)
+                    .size(100.dp)
                     .clip(CircleShape)
                     .background(Color.White.copy(alpha = 0.2f))
                     .border(2.dp, Color.White, CircleShape),
@@ -112,30 +122,50 @@ fun UserProfileHeader() {
             ) {
                 Icon(
                     imageVector = Icons.Default.Person,
-                    contentDescription = "Profile",
-                    tint = Color.White,
-                    modifier = Modifier.size(40.dp)
+                    contentDescription = null,
+                    modifier = Modifier.size(60.dp),
+                    tint = Color.White
                 )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "John Doe",
+                text = currentUser?.displayName ?: "Guest User",
                 color = Color.White,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold
             )
 
             Text(
-                text = "john.doe@example.com",
+                text = currentUser?.email ?: "No email available",
                 color = Color.White.copy(alpha = 0.8f),
-                fontSize = 14.sp
+                fontSize = 16.sp
             )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedButton(
+                onClick = {
+                    // Initialize with current name if available
+                    newDisplayName = currentUser?.displayName ?: ""
+                    showDialog = true
+                },
+                modifier = Modifier
+                    .padding(top = 8.dp)
+                    .height(36.dp),
+                shape = RoundedCornerShape(18.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = Color.Transparent,
+                    contentColor = Color.White
+                ),
+                border = BorderStroke(1.dp, Color.White)
+            ) {
+                Text("Edit Profile", fontSize = 14.sp)
+            }
         }
     }
 }
-
 @Composable
 fun SettingsSection(
     title: String,
@@ -150,17 +180,18 @@ fun SettingsSection(
             text = title,
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
+            color = WeatherUtils.TemperatureHighColor,
             modifier = Modifier.padding(vertical = 8.dp, horizontal = 8.dp)
         )
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(
-                containerColor = Color.White
+                containerColor = WeatherUtils.CardBackgroundColor
             ),
             elevation = CardDefaults.cardElevation(
-                defaultElevation = 2.dp
+                defaultElevation = 4.dp
             )
         ) {
             Column {
@@ -168,8 +199,8 @@ fun SettingsSection(
                     SettingsItemRow(item)
                     if (index < items.size - 1) {
                         Divider(
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                            color = Color.LightGray.copy(alpha = 0.5f)
+                            color = WeatherUtils.DividerColor,
+                            modifier = Modifier.padding(horizontal = 16.dp)
                         )
                     }
                 }
@@ -184,13 +215,13 @@ fun SettingsItemRow(item: SettingsItem) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable { item.onClick() }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 16.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             imageVector = item.icon,
             contentDescription = item.title,
-            tint = BlueSolidColor,
+            tint = WeatherUtils.BlueSolidColor,
             modifier = Modifier.size(24.dp)
         )
 
@@ -199,23 +230,43 @@ fun SettingsItemRow(item: SettingsItem) {
         Text(
             text = item.title,
             fontSize = 16.sp,
+            color = WeatherUtils.TemperatureHighColor,
             modifier = Modifier.weight(1f)
         )
 
         Icon(
-            imageVector = Icons.Default.ArrowForward,
+            imageVector = Icons.Default.KeyboardArrowRight,
             contentDescription = "Navigate",
-            tint = Color.Gray,
+            tint = WeatherUtils.MetricsTextColor,
             modifier = Modifier.size(20.dp)
         )
     }
 }
 
 @Composable
-fun WeatherAlertPreferences() {
-    var severeAlertsChecked by remember { mutableStateOf(true) }
-    var dailyForecastChecked by remember { mutableStateOf(true) }
-    var precipitationChecked by remember { mutableStateOf(false) }
+fun WeatherAlertPreferences(viewModel: PreferencesViewModel = viewModel()) {
+    val severeAlertsChecked by viewModel.severeAlerts.collectAsState()
+    val dailyForecastChecked by viewModel.dailyForecast.collectAsState()
+    val precipitationChecked by viewModel.precipitationAlerts.collectAsState()
+    var showFeedback by remember { mutableStateOf<String?>(null) }
+
+    // Show feedback if needed
+    showFeedback?.let { message ->
+        LaunchedEffect(message) {
+            delay(2000)
+            showFeedback = null
+        }
+        Snackbar(
+            modifier = Modifier.padding(16.dp),
+            action = {
+                TextButton(onClick = { showFeedback = null }) {
+                    Text("Dismiss")
+                }
+            }
+        ) {
+            Text(message)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -226,49 +277,124 @@ fun WeatherAlertPreferences() {
             text = "Weather Alerts",
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
+            color = WeatherUtils.TemperatureHighColor,
             modifier = Modifier.padding(vertical = 8.dp, horizontal = 8.dp)
         )
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(
-                containerColor = Color.White
+                containerColor = WeatherUtils.CardBackgroundColor
             ),
             elevation = CardDefaults.cardElevation(
-                defaultElevation = 2.dp
+                defaultElevation = 4.dp
             )
         ) {
             Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                PreferenceToggleRow(
+                PreferenceToggleRowWithTest(
                     title = "Severe Weather Alerts",
                     checked = severeAlertsChecked,
-                    onCheckedChange = { severeAlertsChecked = it }
+                    onCheckedChange = {
+                        viewModel.updateSevereAlerts(it)
+                        showFeedback = "Severe weather alerts ${if(it) "enabled" else "disabled"}"
+                    },
+                    onTest = {
+                        viewModel.testSevereWeatherAlert()
+                        showFeedback = "Test notification sent"
+                    },
+                    enabled = severeAlertsChecked
                 )
 
                 Divider(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    color = Color.LightGray.copy(alpha = 0.5f)
+                    color = WeatherUtils.DividerColor,
+                    modifier = Modifier.padding(horizontal = 16.dp)
                 )
 
-                PreferenceToggleRow(
-                    title = "Daily Forecast Notification",
+                PreferenceToggleRowWithTest(
+                    title = "Daily Forecast Notifications",
                     checked = dailyForecastChecked,
-                    onCheckedChange = { dailyForecastChecked = it }
+                    onCheckedChange = {
+                        viewModel.updateDailyForecast(it)
+                        showFeedback = "Daily forecast ${if(it) "enabled" else "disabled"}"
+                    },
+                    onTest = {
+                        viewModel.testDailyForecastAlert()
+                        showFeedback = "Test notification sent"
+                    },
+                    enabled = dailyForecastChecked
                 )
 
                 Divider(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    color = Color.LightGray.copy(alpha = 0.5f)
+                    color = WeatherUtils.DividerColor,
+                    modifier = Modifier.padding(horizontal = 16.dp)
                 )
 
-                PreferenceToggleRow(
+                PreferenceToggleRowWithTest(
                     title = "Precipitation Alerts",
                     checked = precipitationChecked,
-                    onCheckedChange = { precipitationChecked = it }
+                    onCheckedChange = {
+                        viewModel.updatePrecipitationAlerts(it)
+                        showFeedback = "Precipitation alerts ${if(it) "enabled" else "disabled"}"
+                    },
+                    onTest = {
+                        viewModel.testPrecipitationAlert()
+                        showFeedback = "Test notification sent"
+                    },
+                    enabled = precipitationChecked
                 )
             }
         }
+    }
+}
+
+@Composable
+fun PreferenceToggleRowWithTest(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    onTest: () -> Unit,
+    enabled: Boolean
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            fontSize = 16.sp,
+            color = WeatherUtils.TemperatureHighColor,
+            modifier = Modifier.weight(1f)
+        )
+
+        OutlinedButton(
+            onClick = onTest,
+            enabled = enabled,
+            modifier = Modifier
+                .padding(end = 8.dp)
+                .height(32.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = Color.Transparent,
+                contentColor = WeatherUtils.BlueSolidColor
+            ),
+            border = BorderStroke(1.dp, WeatherUtils.BlueSolidColor)
+        ) {
+            Text("Test", fontSize = 12.sp)
+        }
+
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = WeatherUtils.BlueSolidColor,
+                checkedTrackColor = WeatherUtils.HumidityIconColor,
+                uncheckedThumbColor = Color.Gray,
+                uncheckedTrackColor = Color.LightGray
+            )
+        )
     }
 }
 
@@ -287,6 +413,7 @@ fun PreferenceToggleRow(
         Text(
             text = title,
             fontSize = 16.sp,
+            color = WeatherUtils.TemperatureHighColor,
             modifier = Modifier.weight(1f)
         )
 
@@ -294,8 +421,10 @@ fun PreferenceToggleRow(
             checked = checked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = BlueSolidColor,
-                checkedTrackColor = BlueSolidColor.copy(alpha = 0.5f)
+                checkedThumbColor = WeatherUtils.BlueSolidColor,
+                checkedTrackColor = WeatherUtils.HumidityIconColor,
+                uncheckedThumbColor = Color.Gray,
+                uncheckedTrackColor = Color.LightGray
             )
         )
     }
@@ -310,15 +439,21 @@ fun SignOutButton(onSignOut: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Button(
-            onClick = { onSignOut() },  // Call the onSignOut function passed as parameter
-            modifier = Modifier.fillMaxWidth(),
+            onClick = onSignOut,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFFE57373)
+                containerColor = Color(0xFFF44336),
+                contentColor = Color.White
             ),
-            shape = RoundedCornerShape(8.dp)
+            shape = RoundedCornerShape(12.dp),
+            elevation = ButtonDefaults.buttonElevation(
+                defaultElevation = 4.dp
+            )
         ) {
             Icon(
-                imageVector = Icons.Default.ExitToApp,
+                imageVector = Icons.Default.Logout,
                 contentDescription = "Sign Out",
                 modifier = Modifier.size(20.dp)
             )
@@ -326,12 +461,12 @@ fun SignOutButton(onSignOut: () -> Unit) {
             Text(
                 text = "Sign Out",
                 fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.padding(vertical = 8.dp)
+                fontWeight = FontWeight.Medium
             )
         }
     }
 }
+
 data class SettingsItem(
     val title: String,
     val icon: ImageVector,
