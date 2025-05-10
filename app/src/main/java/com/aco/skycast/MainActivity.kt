@@ -1,5 +1,7 @@
 package com.aco.skycast
 
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -15,6 +17,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -33,15 +37,31 @@ import com.aco.skycast.ui.navigation.AppNavigation
 import com.aco.skycast.ui.navigation.BottomNavItem
 import com.aco.skycast.ui.screens.*
 import com.aco.skycast.ui.theme.SkyCastTheme
+import com.aco.skycast.utils.NotificationHelper
 import com.google.firebase.FirebaseApp
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import android.Manifest
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var weatherViewModel: WeatherViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Request notification permission on app start
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                    NotificationHelper.PERMISSION_REQUEST_CODE
+                )
+            }
+        }
         // In your Application class or MainActivity onCreate
         FirebaseApp.initializeApp(this)
         super.onCreate(savedInstanceState)

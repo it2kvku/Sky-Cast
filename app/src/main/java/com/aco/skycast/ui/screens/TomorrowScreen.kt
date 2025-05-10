@@ -1,10 +1,13 @@
 package com.aco.skycast.ui.screens
 
 import android.location.Geocoder
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,7 +21,9 @@ import com.aco.skycast.data.api.WeatherDay
 import com.aco.skycast.data.api.WeatherHour
 import com.aco.skycast.data.model.WeatherUiState
 import com.aco.skycast.data.model.WeatherViewModel
+import com.aco.skycast.utils.WeatherUtils
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
@@ -44,11 +49,13 @@ fun TomorrowScreen(
     }
 
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(WeatherUtils.BackgroundColor),
         contentAlignment = Alignment.Center
     ) {
         when (uiState) {
-            is WeatherUiState.Loading -> CircularProgressIndicator()
+            is WeatherUiState.Loading -> CircularProgressIndicator(color = Color.White)
             is WeatherUiState.Success -> {
                 val weatherData = (uiState as WeatherUiState.Success).data
 
@@ -83,11 +90,30 @@ fun TomorrowScreen(
                         DetailedForecastCard(tomorrowForecast)
                     }
                 } else {
-                    Text("Tomorrow's forecast not available")
+                    Text(
+                        "Tomorrow's forecast not available",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
             is WeatherUiState.Error -> {
-                Text("Error: ${(uiState as WeatherUiState.Error).message}")
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        "Unable to load forecast",
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = (uiState as WeatherUiState.Error).message,
+                        color = Color.White.copy(alpha = 0.8f)
+                    )
+                }
             }
         }
     }
@@ -98,7 +124,7 @@ suspend fun getCityNameFromCoordinates(context: android.content.Context, latitud
     return withContext(Dispatchers.IO) {
         try {
             val geocoder = Geocoder(context, Locale.getDefault())
-            
+
             // For Android API 33+
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
                 var result = "Unknown Location"
@@ -135,23 +161,29 @@ fun TomorrowHeader(date: String, location: String) {
         date
     }
 
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.padding(vertical = 8.dp)
+    ) {
         Text(
             text = "Tomorrow's Weather",
             fontSize = 24.sp,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            color = Color.White
         )
+
+        Spacer(modifier = Modifier.height(4.dp))
 
         Text(
             text = formattedDate,
             fontSize = 18.sp,
-            color = Color.Gray
+            color = Color.White.copy(alpha = 0.9f)
         )
 
         Text(
             text = location,
             fontSize = 16.sp,
-            color = Color.Gray
+            color = Color.White.copy(alpha = 0.8f)
         )
     }
 }
@@ -161,7 +193,7 @@ fun TomorrowSummaryCard(forecast: WeatherDay) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1976D2)),
+        colors = CardDefaults.cardColors(containerColor = WeatherUtils.BlueSolidColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
@@ -170,10 +202,19 @@ fun TomorrowSummaryCard(forecast: WeatherDay) {
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Weather emoji
+            Text(
+                text = WeatherUtils.getWeatherEmoji(forecast.conditions),
+                fontSize = 64.sp
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             Text(
                 text = forecast.conditions,
                 color = Color.White,
-                fontSize = 20.sp
+                fontSize = 22.sp,
+                fontWeight = FontWeight.SemiBold
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -186,12 +227,12 @@ fun TomorrowSummaryCard(forecast: WeatherDay) {
                     Text(
                         text = "High",
                         color = Color.White.copy(alpha = 0.7f),
-                        fontSize = 14.sp
+                        fontSize = 16.sp
                     )
                     Text(
-                        text = "${forecast.tempmax.toInt()}°C",
+                        text = "${forecast.tempmax.toInt()}°",
                         color = Color.White,
-                        fontSize = 22.sp,
+                        fontSize = 24.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -200,16 +241,20 @@ fun TomorrowSummaryCard(forecast: WeatherDay) {
                     Text(
                         text = "Low",
                         color = Color.White.copy(alpha = 0.7f),
-                        fontSize = 14.sp
+                        fontSize = 16.sp
                     )
                     Text(
-                        text = "${forecast.tempmin.toInt()}°C",
+                        text = "${forecast.tempmin.toInt()}°",
                         color = Color.White,
-                        fontSize = 22.sp,
+                        fontSize = 24.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Divider(color = Color.White.copy(alpha = 0.2f))
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -231,19 +276,24 @@ fun HourlyForecastSection(hours: List<WeatherHour>) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.cardColors(containerColor = WeatherUtils.CardBackgroundColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = "Hourly Forecast",
                 fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = WeatherUtils.TemperatureHighColor
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Only show a subset of hours to keep it manageable (every 3 hours)
+            Divider(color = WeatherUtils.DividerColor)
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Only show a subset of hours to keep it manageable (every 3-4 hours)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
@@ -254,7 +304,7 @@ fun HourlyForecastSection(hours: List<WeatherHour>) {
                 for (timePoint in selectedHours) {
                     val hourData = hours.find { it.datetime.endsWith(timePoint) }
                     hourData?.let {
-                        val time = it.datetime.split(":")[0].toInt()
+                        val time = timePoint.substring(0, 2).toInt()
                         val timeLabel = when {
                             time == 0 -> "12 AM"
                             time < 12 -> "$time AM"
@@ -264,7 +314,7 @@ fun HourlyForecastSection(hours: List<WeatherHour>) {
 
                         HourlyForecastItem(
                             time = timeLabel,
-                            icon = getWeatherEmoji(it.icon),
+                            condition = it.conditions,
                             temp = "${it.temp.toInt()}°"
                         )
                     }
@@ -275,14 +325,34 @@ fun HourlyForecastSection(hours: List<WeatherHour>) {
 }
 
 @Composable
-fun HourlyForecastItem(time: String, icon: String, temp: String) {
+fun HourlyForecastItem(time: String, condition: String, temp: String) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.padding(horizontal = 4.dp)
+        modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp)
     ) {
-        Text(text = time, color = Color.Gray, fontSize = 14.sp)
-        Text(text = icon, fontSize = 24.sp)
-        Text(text = temp, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        Text(
+            text = time,
+            color = WeatherUtils.MetricsTextColor,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = WeatherUtils.getWeatherEmoji(condition),
+            fontSize = 32.sp,
+            color = WeatherUtils.WeatherEmojiColor
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = temp,
+            fontWeight = FontWeight.Bold,
+            fontSize = 18.sp,
+            color = WeatherUtils.TemperatureHighColor
+        )
     }
 }
 
@@ -291,56 +361,107 @@ fun DetailedForecastCard(forecast: WeatherDay) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.cardColors(containerColor = WeatherUtils.CardBackgroundColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
                 text = "Weather Details",
                 fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = WeatherUtils.TemperatureHighColor
             )
 
-            Divider()
+            Divider(color = WeatherUtils.DividerColor)
 
-            ForecastDetailRow("Humidity", "${forecast.humidity.toInt()}%")
-            ForecastDetailRow("Wind Speed", "${forecast.windspeed} km/h")
-            ForecastDetailRow("Precipitation", "${forecast.precip} mm")
-            ForecastDetailRow("Precipitation Chance", "${forecast.precipprob}%")
-            ForecastDetailRow("UV Index", forecast.uvindex.toString())
-            ForecastDetailRow("Sunrise", forecast.sunrise)
-            ForecastDetailRow("Sunset", forecast.sunset)
+            ForecastDetailRow("Humidity", "${forecast.humidity.toInt()}%", Icons.Outlined.WaterDrop, WeatherUtils.HumidityIconColor)
+            ForecastDetailRow("Wind Speed", "${forecast.windspeed.toInt()} km/h", Icons.Outlined.Air, WeatherUtils.WindIconColor)
+            ForecastDetailRow("Precipitation", "${forecast.precip} mm", Icons.Outlined.Opacity, WeatherUtils.HumidityIconColor)
+            ForecastDetailRow("Precipitation Chance", "${forecast.precipprob.toInt()}%", Icons.Outlined.Watch, WeatherUtils.MetricsTextColor)
+            ForecastDetailRow("UV Index", forecast.uvindex.toString(), Icons.Outlined.WbSunny, WeatherUtils.WeatherEmojiColor)
+
+            Divider(color = WeatherUtils.DividerColor)
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                ForecastDetailColumn("Sunrise", forecast.sunrise, Icons.Outlined.WbSunny)
+                ForecastDetailColumn("Sunset", forecast.sunset, Icons.Outlined.Nightlight)
+            }
         }
     }
 }
 
 @Composable
-fun ForecastDetailRow(label: String, value: String) {
+fun ForecastDetailRow(
+    label: String,
+    value: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconTint: Color
+) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = label, color = Color.Gray)
-        Text(text = value, fontWeight = FontWeight.Medium)
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = iconTint,
+            modifier = Modifier.size(20.dp)
+        )
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Text(
+            text = label,
+            color = WeatherUtils.MetricsTextColor,
+            modifier = Modifier.weight(1f)
+        )
+
+        Text(
+            text = value,
+            fontWeight = FontWeight.Medium,
+            color = WeatherUtils.TemperatureHighColor
+        )
     }
 }
 
-// Helper function to map weather condition icons to emoji
-fun getWeatherEmoji(icon: String): String {
-    return when (icon) {
-        "clear-day", "clear-night" -> "☀️"
-        "partly-cloudy-day", "partly-cloudy-night" -> "🌤️"
-        "cloudy" -> "☁️"
-        "rain" -> "🌧️"
-        "snow", "snow-showers-day", "snow-showers-night" -> "❄️"
-        "thunder-rain", "thunder-showers-day", "thunder-showers-night" -> "⛈️"
-        "fog" -> "🌫️"
-        "wind" -> "🌬️"
-        else -> "🌡️"
+@Composable
+fun ForecastDetailColumn(
+    label: String,
+    value: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = WeatherUtils.WeatherEmojiColor,
+            modifier = Modifier.size(24.dp)
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            text = label,
+            color = WeatherUtils.MetricsTextColor,
+            fontSize = 14.sp
+        )
+
+        Text(
+            text = value,
+            fontWeight = FontWeight.Medium,
+            color = WeatherUtils.TemperatureHighColor
+        )
     }
 }

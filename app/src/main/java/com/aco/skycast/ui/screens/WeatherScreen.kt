@@ -2,12 +2,15 @@ package com.aco.skycast.ui.screens
 
 import android.Manifest
 import android.content.pm.PackageManager
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.Air
+import androidx.compose.material.icons.outlined.WaterDrop
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,12 +18,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aco.skycast.data.model.WeatherUiState
 import com.aco.skycast.data.model.WeatherViewModel
+import com.aco.skycast.utils.LocationUtils
+import com.aco.skycast.utils.WeatherUtils
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.android.gms.location.LocationServices
@@ -28,12 +33,8 @@ import com.google.android.gms.tasks.Tasks
 import com.google.accompanist.permissions.rememberPermissionState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import androidx.compose.material3.CircularProgressIndicator
-import kotlin.text.toInt
-
-// Define a solid color for UI elements
-private val BlueSolidColor = Color(0xFF1976D2)
-
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun WeatherScreen(viewModel: WeatherViewModel) {
@@ -44,10 +45,19 @@ fun WeatherScreen(viewModel: WeatherViewModel) {
     val locationPermissionState = rememberPermissionState(
         Manifest.permission.ACCESS_FINE_LOCATION
     )
+
     LaunchedEffect(Unit) {
+        viewModel.getCityFromIp()
         if (locationPermissionState.status.isGranted) {
             getCurrentLocation(context) { lat, lon ->
-                viewModel.getWeatherByCoordinates(lat, lon)
+                // Launch a coroutine to call the suspend function
+                CoroutineScope(Dispatchers.Main).launch {
+                    // Get location name before fetching weather
+                    val locationName = LocationUtils.getLocationNameFromCoordinates(context, lat, lon)
+                    // Update to use the existing ipCityState
+                    viewModel.updateIpCity(locationName)
+                    viewModel.getWeatherByCoordinates(lat, lon)
+                }
             }
         } else {
             locationPermissionState.launchPermissionRequest()
@@ -56,16 +66,31 @@ fun WeatherScreen(viewModel: WeatherViewModel) {
         }
     }
 
+    val ipCityState by viewModel.ipCity.collectAsState()
+
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(WeatherUtils.BackgroundColor),
         contentAlignment = Alignment.Center
     ) {
         when (uiState) {
-            is WeatherUiState.Loading -> CircularProgressIndicator()
+            is WeatherUiState.Loading -> CircularProgressIndicator(color = Color.White)
             is WeatherUiState.Success -> {
                 val weather = (uiState as WeatherUiState.Success).data
 
-                val locationName = extractCityName(weather.resolvedAddress)
+                // Ensure non-nullability with ?: operator
+                val locationName: String = if (!ipCityState.isNullOrBlank()) {
+                    ipCityState ?: "Current Location"
+                } else {
+                    if (weather.address != null) {
+                        weather.address
+                    } else if (weather.resolvedAddress != null && !weather.resolvedAddress.matches(Regex(".*\\d+\\.\\d+.*"))) {
+                        weather.resolvedAddress
+                    } else {
+                        "Current Location"
+                    }
+                }
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -88,24 +113,28 @@ fun WeatherScreen(viewModel: WeatherViewModel) {
                 }
             }
             is WeatherUiState.Error -> {
-                Text("Error: ${(uiState as WeatherUiState.Error).message}")
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "Unable to load weather data",
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = (uiState as WeatherUiState.Error).message,
+                        color = Color.White.copy(alpha = 0.8f),
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
         }
     }
 }
-internal fun extractCityName(address: String): String {
-    // The address format is typically "City, State, Country"
-    // or "City, Country" or sometimes has ZIP codes
 
-    // First, try to get the first part before any comma
-    val parts = address.split(",")
-    if (parts.isNotEmpty()) {
-        return parts[0].trim()
-    }
-
-    // If there's an issue, return the whole address
-    return address
-}
 // Helper function to get current location
 suspend fun getCurrentLocation(context: android.content.Context, onSuccess: (Double, Double) -> Unit) {
     if (ContextCompat.checkSelfPermission(
@@ -114,18 +143,15 @@ suspend fun getCurrentLocation(context: android.content.Context, onSuccess: (Dou
         ) == PackageManager.PERMISSION_GRANTED
     ) {
         try {
-            // Switch to IO dispatcher for network/IO operations
             withContext(Dispatchers.IO) {
                 val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
                 val locationTask = fusedLocationClient.lastLocation
                 val location = Tasks.await(locationTask)
                 if (location != null) {
-                    // Switch back to Main dispatcher to update UI
                     withContext(Dispatchers.Main) {
                         onSuccess(location.latitude, location.longitude)
                     }
                 } else {
-                    // Use default location if location is null
                     withContext(Dispatchers.Main) {
                         onSuccess(40.7128, -74.0060) // New York as default
                     }
@@ -135,12 +161,10 @@ suspend fun getCurrentLocation(context: android.content.Context, onSuccess: (Dou
             e.printStackTrace()
         }
     } else {
-        // Use default location if permission not granted
         onSuccess(40.7128, -74.0060) // New York as default
     }
-
-
 }
+
 @Composable
 fun ForecastSection(viewModel: WeatherViewModel) {
     val uiState by viewModel.weatherState.collectAsState()
@@ -150,14 +174,15 @@ fun ForecastSection(viewModel: WeatherViewModel) {
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.cardColors(containerColor = WeatherUtils.CardBackgroundColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = "Today's Forecast",
                 fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = WeatherUtils.TemperatureHighColor
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -202,7 +227,7 @@ fun ForecastSection(viewModel: WeatherViewModel) {
 
                                     ForecastItem(
                                         time = timeLabel,
-                                        icon = getWeatherEmoji(hourData.conditions),
+                                        icon = WeatherUtils.getWeatherEmoji(hourData.conditions),
                                         temp = "${hourData.temp.toInt()}°"
                                     )
                                 }
@@ -211,7 +236,7 @@ fun ForecastSection(viewModel: WeatherViewModel) {
                     } else {
                         Text(
                             text = "Hourly forecast not available",
-                            color = Color.Gray
+                            color = WeatherUtils.MetricsTextColor
                         )
                     }
                 }
@@ -219,42 +244,43 @@ fun ForecastSection(viewModel: WeatherViewModel) {
         }
     }
 }
-// Helper function to map weather conditions to emojis
-fun getWeatherEmoji(condition: String?): String {
-    return when {
-        condition == null -> "❓"
-        condition.contains("rain", ignoreCase = true) -> "🌧️"
-        condition.contains("cloud", ignoreCase = true) && condition.contains("sun", ignoreCase = true) -> "🌤️"
-        condition.contains("cloud", ignoreCase = true) -> "☁️"
-        condition.contains("clear", ignoreCase = true) -> "☀️"
-        condition.contains("snow", ignoreCase = true) -> "❄️"
-        condition.contains("storm", ignoreCase = true) -> "⛈️"
-        condition.contains("fog", ignoreCase = true) -> "🌫️"
-        else -> "🌤️"
-    }
-}
 
 @Composable
 fun ForecastItem(time: String, icon: String, temp: String) {
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.padding(vertical = 8.dp)
     ) {
-        Text(text = time, color = Color.Gray, fontSize = 14.sp)
-        Text(text = icon, fontSize = 24.sp)
-        Text(text = temp, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+        Text(
+            text = time,
+            color = WeatherUtils.MetricsTextColor,
+            fontSize = 14.sp
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = icon,
+            fontSize = 32.sp,
+            color = WeatherUtils.WeatherEmojiColor
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = temp,
+            fontWeight = FontWeight.Bold,
+            fontSize = 16.sp,
+            color = WeatherUtils.TemperatureHighColor
+        )
     }
 }
 
 @Composable
 fun TaskSection() {
-    // Implementing the previously marked TODO function
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.cardColors(containerColor = WeatherUtils.CardBackgroundColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -265,7 +291,8 @@ fun TaskSection() {
                 Text(
                     text = "Weather Recommendations",
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = WeatherUtils.TemperatureHighColor
                 )
 
                 IconButton(
@@ -274,16 +301,20 @@ fun TaskSection() {
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
-                        contentDescription = "Add"
+                        contentDescription = "Add",
+                        tint = WeatherUtils.BlueSolidColor
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Divider(
+                color = WeatherUtils.DividerColor,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
 
-            // Placeholder recommendations
             TaskItem("Good day for outdoor activities", isCompleted = false)
             TaskItem("Moderate UV index - use sunscreen", isCompleted = true)
+            TaskItem("High humidity - stay hydrated", isCompleted = false)
         }
     }
 }
@@ -298,18 +329,17 @@ fun TaskItem(text: String, isCompleted: Boolean) {
     ) {
         Checkbox(
             checked = isCompleted,
-            onCheckedChange = { /* Handle check change */
-
-                // Handle the checkbox state change
-
-
-            }
+            onCheckedChange = { /* Handle check change */ },
+            colors = CheckboxDefaults.colors(
+                checkedColor = WeatherUtils.BlueSolidColor,
+                uncheckedColor = WeatherUtils.MetricsTextColor
+            )
         )
 
         Text(
             text = text,
             modifier = Modifier.padding(start = 8.dp),
-            color = if (isCompleted) Color.Gray else Color.Black,
+            color = if (isCompleted) WeatherUtils.MetricsTextColor else WeatherUtils.TemperatureHighColor,
             fontSize = 16.sp
         )
     }
@@ -330,7 +360,7 @@ fun WeatherCard(
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = BlueSolidColor
+            containerColor = WeatherUtils.BlueSolidColor
         ),
         elevation = CardDefaults.cardElevation(
             defaultElevation = 4.dp
@@ -345,10 +375,18 @@ fun WeatherCard(
             Text(
                 text = location,
                 color = Color.White,
-                fontSize = 20.sp
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Medium
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = WeatherUtils.getWeatherEmoji(condition),
+                fontSize = 64.sp
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             Text(
                 text = temperature,
@@ -363,36 +401,66 @@ fun WeatherCard(
                 fontSize = 20.sp
             )
 
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Divider(color = Color.White.copy(alpha = 0.2f))
+
             Spacer(modifier = Modifier.height(16.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                WeatherDetail("Feels like", feelsLike ?: "N/A")
-                WeatherDetail("Wind", windSpeed ?: "N/A")
-                WeatherDetail("Humidity", humidity ?: "N/A")
+                WeatherDetail(
+                    icon = Icons.Outlined.WaterDrop,
+                    value = humidity ?: "N/A",
+                    label = "Humidity"
+                )
+
+                WeatherDetail(
+                    icon = Icons.Outlined.Air,
+                    value = windSpeed ?: "N/A",
+                    label = "Wind"
+                )
+
+                WeatherDetail(
+                    icon = null,
+                    value = feelsLike ?: "N/A",
+                    label = "Feels like"
+                )
             }
         }
     }
 }
 
 @Composable
-fun WeatherDetail(label: String, value: String) {
+fun WeatherDetail(icon: androidx.compose.ui.graphics.vector.ImageVector?, value: String, label: String) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = label,
-            color = Color.White.copy(alpha = 0.7f),
-            fontSize = 14.sp
-        )
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.8f),
+                modifier = Modifier.size(22.dp)
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+        }
 
         Text(
             text = value,
             color = Color.White,
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold
+        )
+
+        Spacer(modifier = Modifier.height(2.dp))
+
+        Text(
+            text = label,
+            color = Color.White.copy(alpha = 0.7f),
+            fontSize = 14.sp
         )
     }
 }

@@ -103,4 +103,23 @@ class AuthViewModel : ViewModel() {
             _authState.value = AuthUiState.Error(e.message ?: "Google sign-in failed")
         }
     }
+    fun updateDisplayName(newDisplayName: String) {
+        _authState.value = AuthUiState.Loading
+        viewModelScope.launch {
+            try {
+                val user = auth.currentUser
+                if (user != null) {
+                    val profileUpdates = UserProfileChangeRequest.Builder()
+                        .setDisplayName(newDisplayName)
+                        .build()
+                    user.updateProfile(profileUpdates).await()
+                    _authState.value = AuthUiState.Success(user)
+                } else {
+                    _authState.value = AuthUiState.Error("No user is signed in")
+                }
+            } catch (e: Exception) {
+                _authState.value = AuthUiState.Error(e.message ?: "Failed to update display name")
+            }
+        }
+    }
 }
