@@ -5,5 +5,5 @@ data class CitySearchData(
     val country: String,
     val lat: Double,
     val lon: Double,
-    val temperature: Double = 0.0
+    val temperature: Double
 )

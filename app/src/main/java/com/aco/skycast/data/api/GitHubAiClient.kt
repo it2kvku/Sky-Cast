@@ -11,7 +11,6 @@ import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
 class GitHubAiClient(private val token: String) {
-    private val TAG = "GitHubAiClient"
     private val ENDPOINT = "https://models.github.ai/inference/chat/completions"
     private val MODEL = "openai/gpt-4.1"
 

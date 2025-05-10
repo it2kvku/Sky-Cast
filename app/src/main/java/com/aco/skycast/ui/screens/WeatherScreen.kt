@@ -3,6 +3,7 @@ package com.aco.skycast.ui.screens
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,6 +36,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import androidx.compose.material.icons.filled.Refresh
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun WeatherScreen(viewModel: WeatherViewModel) {
@@ -109,7 +111,7 @@ fun WeatherScreen(viewModel: WeatherViewModel) {
 
                     ForecastSection(viewModel)
 
-                    TaskSection()
+                    TaskSection(viewModel)
                 }
             }
             is WeatherUiState.Error -> {
@@ -168,112 +170,8 @@ suspend fun getCurrentLocation(context: android.content.Context, onSuccess: (Dou
 @Composable
 fun ForecastSection(viewModel: WeatherViewModel) {
     val uiState by viewModel.weatherState.collectAsState()
+    val horizontalScrollState = rememberScrollState()
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = WeatherUtils.CardBackgroundColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "Today's Forecast",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = WeatherUtils.TemperatureHighColor
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            when (uiState) {
-                is WeatherUiState.Loading -> {
-                    Box(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                    }
-                }
-                is WeatherUiState.Error -> {
-                    Text(
-                        text = "Failed to load forecast",
-                        color = Color.Red
-                    )
-                }
-                is WeatherUiState.Success -> {
-                    val weather = (uiState as WeatherUiState.Success).data
-                    val today = weather.days.firstOrNull()
-
-                    if (today?.hours != null && today.hours.isNotEmpty()) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly
-                        ) {
-                            // Filter for specific times of the day (9AM, 12PM, 3PM, 6PM)
-                            val timePoints = listOf("09:00:00", "12:00:00", "15:00:00", "18:00:00")
-
-                            for (timePoint in timePoints) {
-                                val hourData = today.hours.find { it.datetime.endsWith(timePoint) == true }
-                                if (hourData != null) {
-                                    val time = timePoint.substring(0, 2).toInt()
-                                    val timeLabel = when {
-                                        time == 0 -> "12 AM"
-                                        time < 12 -> "$time AM"
-                                        time == 12 -> "12 PM"
-                                        else -> "${time - 12} PM"
-                                    }
-
-                                    ForecastItem(
-                                        time = timeLabel,
-                                        icon = WeatherUtils.getWeatherEmoji(hourData.conditions),
-                                        temp = "${hourData.temp.toInt()}°"
-                                    )
-                                }
-                            }
-                        }
-                    } else {
-                        Text(
-                            text = "Hourly forecast not available",
-                            color = WeatherUtils.MetricsTextColor
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun ForecastItem(time: String, icon: String, temp: String) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.padding(vertical = 8.dp)
-    ) {
-        Text(
-            text = time,
-            color = WeatherUtils.MetricsTextColor,
-            fontSize = 14.sp
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = icon,
-            fontSize = 32.sp,
-            color = WeatherUtils.WeatherEmojiColor
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = temp,
-            fontWeight = FontWeight.Bold,
-            fontSize = 16.sp,
-            color = WeatherUtils.TemperatureHighColor
-        )
-    }
-}
-
-@Composable
-fun TaskSection() {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -289,61 +187,313 @@ fun TaskSection() {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Weather Recommendations",
+                    text = "Today's Forecast",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = WeatherUtils.TemperatureHighColor
                 )
 
-                IconButton(
-                    onClick = { /* Add task */ },
-                    modifier = Modifier.size(24.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Add",
-                        tint = WeatherUtils.BlueSolidColor
-                    )
-                }
+                Text(
+                    text = "Hourly",
+                    fontSize = 14.sp,
+                    color = WeatherUtils.BlueSolidColor,
+                    fontWeight = FontWeight.Medium
+                )
             }
 
-            Divider(
-                color = WeatherUtils.DividerColor,
-                modifier = Modifier.padding(vertical = 8.dp)
-            )
+            Spacer(modifier = Modifier.height(16.dp))
 
-            TaskItem("Good day for outdoor activities", isCompleted = false)
-            TaskItem("Moderate UV index - use sunscreen", isCompleted = true)
-            TaskItem("High humidity - stay hydrated", isCompleted = false)
+            when (uiState) {
+                is WeatherUiState.Loading -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(100.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = WeatherUtils.BlueSolidColor
+                        )
+                    }
+                }
+                is WeatherUiState.Error -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(100.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "Failed to load forecast",
+                                color = Color.Red
+                            )
+                            Text(
+                                text = "Pull to refresh",
+                                color = WeatherUtils.MetricsTextColor,
+                                fontSize = 12.sp,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
+                    }
+                }
+                is WeatherUiState.Success -> {
+                    val weather = (uiState as WeatherUiState.Success).data
+                    val today = weather.days.firstOrNull()
+
+                    if (today?.hours != null && today.hours.isNotEmpty()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(horizontalScrollState)
+                                .padding(vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            // Display hourly forecasts for the current day
+                            today.hours.forEachIndexed { index, hour ->
+                                if (index % 2 == 0) { // Show every 2 hours to save space
+                                    val time = hour.datetime.substring(0, 5) // Format: "HH:MM"
+                                    ForecastItem(
+                                        time = time,
+                                        icon = WeatherUtils.getWeatherEmoji(hour.conditions),
+                                        temp = "${hour.temp.toInt()}°",
+                                        condition = hour.conditions
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(100.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "Hourly forecast not available",
+                                    color = WeatherUtils.MetricsTextColor
+                                )
+                                Text(
+                                    text = "Check your API settings",
+                                    color = WeatherUtils.MetricsTextColor.copy(alpha = 0.7f),
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
-fun TaskItem(text: String, isCompleted: Boolean) {
-    Row(
+fun ForecastItem(
+    time: String,
+    icon: String,
+    temp: String,
+    condition: String
+) {
+    Card(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .width(80.dp)
+            .padding(bottom = 4.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = WeatherUtils.LightBackground
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Checkbox(
-            checked = isCompleted,
-            onCheckedChange = { /* Handle check change */ },
-            colors = CheckboxDefaults.colors(
-                checkedColor = WeatherUtils.BlueSolidColor,
-                uncheckedColor = WeatherUtils.MetricsTextColor
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(vertical = 12.dp, horizontal = 8.dp)
+        ) {
+            Text(
+                text = time,
+                color = WeatherUtils.MetricsTextColor,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium
             )
-        )
 
-        Text(
-            text = text,
-            modifier = Modifier.padding(start = 8.dp),
-            color = if (isCompleted) WeatherUtils.MetricsTextColor else WeatherUtils.TemperatureHighColor,
-            fontSize = 16.sp
-        )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = icon,
+                fontSize = 32.sp,
+                color = WeatherUtils.WeatherEmojiColor
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = temp,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = WeatherUtils.TemperatureHighColor
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = condition.split(",").firstOrNull() ?: condition,
+                color = WeatherUtils.MetricsTextColor,
+                fontSize = 10.sp,
+                maxLines = 1,
+                textAlign = TextAlign.Center
+            )
+        }
     }
 }
+
+@Composable
+fun TaskSection(viewModel: WeatherViewModel) {
+    val recommendations by viewModel.recommendations.collectAsState()
+
+    // Request recommendations if empty
+    LaunchedEffect(Unit) {
+        if (recommendations.isEmpty()) {
+            viewModel.getWeatherRecommendations()
+        }
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = WeatherUtils.CardBackgroundColor.copy(alpha = 0.95f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Weather Recommendations",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = WeatherUtils.BlueSolidColor
+                )
+
+                IconButton(
+                    onClick = { viewModel.getWeatherRecommendations() },
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(
+                            color = WeatherUtils.LightBackground,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        .padding(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Refresh recommendations",
+                        tint = WeatherUtils.BlueSolidColor
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Divider(
+                color = WeatherUtils.DividerColor,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            if (recommendations.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = WeatherUtils.BlueSolidColor,
+                        strokeWidth = 3.dp
+                    )
+                }
+            } else {
+                recommendations.forEachIndexed { index, recommendation ->
+                    EnhancedTaskItem(
+                        text = recommendation.text,
+                        isCompleted = recommendation.isCompleted,
+                        onCheckedChange = { viewModel.toggleRecommendation(recommendation.id) }
+                    )
+
+                    if (index < recommendations.size - 1) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun EnhancedTaskItem(
+    text: String,
+    isCompleted: Boolean,
+    onCheckedChange: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = if (isCompleted)
+            WeatherUtils.LightBackground.copy(alpha = 0.6f)
+        else
+            WeatherUtils.LightBackground,
+        tonalElevation = if (isCompleted) 0.dp else 2.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = isCompleted,
+                onCheckedChange = { onCheckedChange() },
+                modifier = Modifier.size(24.dp),
+                colors = CheckboxDefaults.colors(
+                    checkedColor = WeatherUtils.BlueSolidColor,
+                    uncheckedColor = WeatherUtils.BlueSolidColor.copy(alpha = 0.5f),
+                    checkmarkColor = Color.White
+                )
+            )
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Text(
+                text = text,
+                fontSize = 16.sp,
+                lineHeight = 22.sp,
+                color = if (isCompleted)
+                    WeatherUtils.MetricsTextColor
+                else
+                    WeatherUtils.TemperatureHighColor,
+                textDecoration = if (isCompleted)
+                    androidx.compose.ui.text.style.TextDecoration.LineThrough
+                else
+                    null,
+                fontWeight = if (isCompleted)
+                    FontWeight.Normal
+                else
+                    FontWeight.Medium,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
 
 @Composable
 fun WeatherCard(

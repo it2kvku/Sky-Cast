@@ -31,6 +31,8 @@ android {
 
         buildConfigField("String", "GITHUB_TOKEN",
             "\"${secretsProperties.getProperty("GITHUB_TOKEN", "")}\"")
+        buildConfigField("String", "WEATHER_API_KEY",
+            "\"${secretsProperties.getProperty("WEATHER_API_KEY", "")}\"")
     }
 
 
