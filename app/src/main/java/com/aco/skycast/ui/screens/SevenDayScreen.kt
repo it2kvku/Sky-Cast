@@ -23,7 +23,11 @@ import com.aco.skycast.data.model.WeatherViewModel
 import com.aco.skycast.utils.WeatherUtils
 import java.text.SimpleDateFormat
 import java.util.*
-
+import com.aco.skycast.ui.components.WeatherLottieAnimation
+import com.airbnb.lottie.compose.*
+import com.aco.skycast.R
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.TileMode
 
 
 @Composable
@@ -125,16 +129,49 @@ fun ForecastDayCard(day: WeatherDay) {
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Weather icon and condition
+            // Weather animation and condition
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.width(80.dp)
             ) {
-                Text(
-                    text = getWeatherEmojiFromCondition(day.conditions),
-                    fontSize = 38.sp,
-                    color = WeatherUtils.WeatherEmojiColor
-                )
+                // Use sunny animation for overcast conditions in Seven Day Screen
+                if (day.conditions.contains("overcast", ignoreCase = true)) {
+                    // Custom Lottie animation for overcast in Seven Day Screen
+                    val composition by rememberLottieComposition(
+                        spec = LottieCompositionSpec.RawRes(R.raw.sunny)
+                    )
+                    val progress by animateLottieCompositionAsState(
+                        composition = composition,
+                        iterations = LottieConstants.IterateForever
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(Color(0xFF56CCF2), Color(0xFF2F80ED)),
+                                    startY = 0f,
+                                    endY = Float.POSITIVE_INFINITY,
+                                    tileMode = TileMode.Clamp
+                                ),
+                                shape = RoundedCornerShape(12.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        LottieAnimation(
+                            modifier = Modifier.fillMaxSize(),
+                            composition = composition,
+                            progress = { progress }
+                        )
+                    }
+                } else {
+                    // Use standard animation for other conditions
+                    WeatherLottieAnimation(
+                        weatherCondition = day.conditions
+                    )
+                }
+
                 Text(
                     text = day.conditions,
                     style = MaterialTheme.typography.bodySmall,
@@ -144,6 +181,7 @@ fun ForecastDayCard(day: WeatherDay) {
                 )
             }
 
+            // Rest of the card content remains the same
             Spacer(modifier = Modifier.width(16.dp))
 
             // Vertical divider
@@ -224,7 +262,6 @@ fun ForecastDayCard(day: WeatherDay) {
         }
     }
 }
-
 // Renamed to avoid overload resolution ambiguity
 private fun getWeatherEmojiFromCondition(condition: String): String {
     return when {

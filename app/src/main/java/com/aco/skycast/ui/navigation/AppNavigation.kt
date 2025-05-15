@@ -14,6 +14,7 @@ import com.aco.skycast.data.model.WeatherViewModel
 import com.aco.skycast.ui.screens.ChatBotDaily
 import com.aco.skycast.ui.screens.SearchScreen
 import com.aco.skycast.ui.screens.SevenDayScreen
+import com.aco.skycast.ui.screens.SplashScreen
 import com.aco.skycast.ui.screens.TomorrowScreen
 import com.aco.skycast.ui.screens.UserScreen
 import com.aco.skycast.ui.screens.WeatherScreen
@@ -32,7 +33,7 @@ fun AppNavigation(
 ) {
     NavHost(
         navController = navController,
-        startDestination = if (authViewModel.getCurrentUser() != null) BottomNavItem.Home.route else "login",
+        startDestination = "splash",
         modifier = modifier,
         enterTransition = {
             slideIntoContainer(
@@ -59,6 +60,23 @@ fun AppNavigation(
             ) + fadeOut(animationSpec = tween(TRANSITION_DURATION))
         }
     ) {
+        composable("splash") {
+            showBottomBar(false)
+            SplashScreen(
+                onSplashFinished = {
+                    val startDestination = if (authViewModel.getCurrentUser() != null) {
+                        BottomNavItem.Home.route
+                    } else {
+                        "login"
+                    }
+                    navController.navigate(startDestination) {
+                        popUpTo("splash") { inclusive = true }
+                    }
+                    showBottomBar(startDestination != "login")
+                }
+            )
+        }
+
         composable("login") {
             showBottomBar(false)
             LoginScreen(

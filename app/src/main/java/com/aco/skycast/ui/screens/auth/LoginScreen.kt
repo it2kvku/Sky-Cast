@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aco.skycast.data.model.AuthUiState
 import com.aco.skycast.data.model.AuthViewModel
+import androidx.compose.ui.res.painterResource
+import com.aco.skycast.R
 
 private const val TAG = "LoginScreen"
 
@@ -175,29 +177,26 @@ fun LoginScreen(
 
         // Google Sign-In Button
         OutlinedButton(
-            onClick = { 
+            onClick = {
                 showError = false
                 Log.d(TAG, "Starting Google sign-in flow")
-                authViewModel.startGoogleSignIn(context, googleSignInLauncher) 
+                authViewModel.startGoogleSignIn(context, googleSignInLauncher)
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp)
+                .padding(top = 8.dp),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = Color.White
+            )
         ) {
-            Icon(imageVector = Icons.Default.AccountCircle, contentDescription = null)
+            Icon(
+                painter = painterResource(id = R.drawable.ic_google),
+                contentDescription = "Google Logo",
+                modifier = Modifier.size(24.dp),
+                tint = Color.Unspecified // Important to show Google's colors
+            )
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Đăng nhập bằng Google")
-        }
-
-        OutlinedButton(
-            onClick = { /* Facebook login implementation */ },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp)
-        ) {
-            Icon(imageVector = Icons.Default.AccountBox, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Đăng nhập bằng Facebook")
+            Text("Đăng nhập bằng Google", color = Color.Black)
         }
 
         Spacer(modifier = Modifier.height(24.dp))

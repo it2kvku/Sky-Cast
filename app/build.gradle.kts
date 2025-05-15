@@ -159,4 +159,8 @@ dependencies {
     implementation ("com.azure:azure-ai-openai:1.0.0-beta.1")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.2")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.6.2")
+
+    implementation ("com.airbnb.android:lottie-compose:6.1.0")
+    implementation ("androidx.compose.animation:animation:1.5.1")
+    implementation ("androidx.compose.animation:animation-core:1.5.0")
 }
