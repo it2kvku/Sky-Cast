@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.gms.google.services)
     alias(libs.plugins.google.firebase.crashlytics)
+    id("kotlin-kapt")
 }
 
 // Load properties file
@@ -163,4 +164,7 @@ dependencies {
     implementation ("com.airbnb.android:lottie-compose:6.1.0")
     implementation ("androidx.compose.animation:animation:1.5.1")
     implementation ("androidx.compose.animation:animation-core:1.5.0")
+    implementation("androidx.room:room-runtime:2.6.1")
+    kapt("androidx.room:room-compiler:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1")
 }
