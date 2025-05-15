@@ -193,7 +193,7 @@ fun ChatBotDaily(
                     onSuggestionSelected = { suggestion ->
                         messageInput = suggestion
                         sendChatMessage(
-                            message = suggestion,
+                            message = messageInput,
                             currentMessages = messages,
                             updateMessages = { messages = it },
                             weatherState = weatherState,
@@ -201,7 +201,8 @@ fun ChatBotDaily(
                             setLoading = { isLoading = it },
                             scope = scope,
                             focusManager = focusManager,
-                            chatRepository = chatRepository
+                            chatRepository = chatRepository,
+                            viewModel = viewModel  // Add this parameter
                         )
                         messageInput = ""
                     }
@@ -223,7 +224,8 @@ fun ChatBotDaily(
                             setLoading = { isLoading = it },
                             scope = scope,
                             focusManager = focusManager,
-                            chatRepository = chatRepository
+                            chatRepository = chatRepository,
+                            viewModel = viewModel  // Add this parameter
                         )
                         messageInput = ""
                     }
@@ -250,7 +252,8 @@ private fun sendChatMessage(
     setLoading: (Boolean) -> Unit,
     scope: CoroutineScope,
     focusManager: FocusManager,
-    chatRepository: ChatRepository
+    chatRepository: ChatRepository,
+    viewModel: WeatherViewModel
 ) {
     // Add user message
     val userMessage = ChatMessage(content = message, isFromUser = true)
@@ -265,47 +268,54 @@ private fun sendChatMessage(
 
     scope.launch {
         try {
-            // Get weather data to include in prompt
+            // Get current city directly from viewModel without using collectAsState
+            val ipCity = viewModel.ipCity.value
+
+            // Get weather data to include in prompt with improved location information
             val weatherInfo = when (weatherState) {
                 is WeatherUiState.Success -> {
                     val data = weatherState.data
-                    "Current weather in ${data.resolvedAddress}: " +
-                            "${data.days.firstOrNull()?.temp ?: "N/A"}°, " +
-                            "${data.days.firstOrNull()?.conditions ?: "Unknown conditions"}."
+
+                    // Use ipCity if available, otherwise fall back to resolvedAddress
+                    val locationName = if (!ipCity.isNullOrBlank()) {
+                        ipCity
+                    } else {
+                        data.resolvedAddress.split(",").firstOrNull()?.trim() ?: data.resolvedAddress
+                    }
+
+                    "Current weather in $locationName:\n" +
+                            "Temperature: ${data.days.firstOrNull()?.temp ?: "N/A"}°C\n" +
+                            "Conditions: ${data.days.firstOrNull()?.conditions ?: "Unknown"}\n" +
+                            "Humidity: ${data.days.firstOrNull()?.humidity ?: "N/A"}%\n" +
+                            "Wind: ${data.days.firstOrNull()?.windspeed ?: "N/A"} km/h\n" +
+                            "Description: ${data.days.firstOrNull()?.description ?: "No description available"}"
                 }
                 else -> "Weather data is not available."
             }
 
-            // Create AI prompt with message and weather info
+            // Get response from AI
             val response = gitHubAiClient.getWeatherInsights(weatherInfo, message)
 
-            // Add bot response
             val botMessage = ChatMessage(
                 content = response.trim(),
                 isFromUser = false
             )
 
-            // Update messages
             val newMessages = updatedMessages + botMessage
             updateMessages(newMessages)
 
-            // Save messages to repository
             chatRepository.saveMessages(newMessages)
-
         } catch (e: Exception) {
-            // Handle error
             val errorMessage = ChatMessage(
                 content = "Sorry, I couldn't process your request. ${e.message ?: "Unknown error"}",
                 isFromUser = false
             )
             updateMessages(updatedMessages + errorMessage)
         } finally {
-            // Clear loading state
             setLoading(false)
         }
     }
 }
-
 @Composable
 fun AnimatedMessageBubble(message: ChatMessage, index: Int) {
     AnimatedVisibility(
