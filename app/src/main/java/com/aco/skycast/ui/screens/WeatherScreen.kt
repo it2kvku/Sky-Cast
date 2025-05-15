@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.Air
 import androidx.compose.material.icons.outlined.WaterDrop
 import androidx.compose.material3.*
@@ -25,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.aco.skycast.data.model.WeatherUiState
 import com.aco.skycast.data.model.WeatherViewModel
+import com.aco.skycast.ui.components.WeatherLottieAnimation
 import com.aco.skycast.utils.LocationUtils
 import com.aco.skycast.utils.WeatherUtils
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -36,7 +38,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import androidx.compose.material.icons.filled.Refresh
+
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun WeatherScreen(viewModel: WeatherViewModel) {
@@ -291,6 +293,94 @@ fun ForecastSection(viewModel: WeatherViewModel) {
 }
 
 @Composable
+fun TaskSection(viewModel: WeatherViewModel) {
+    val recommendations by viewModel.recommendations.collectAsState()
+
+    // Request recommendations if empty
+    LaunchedEffect(Unit) {
+        if (recommendations.isEmpty()) {
+            viewModel.getWeatherRecommendations()
+        }
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = WeatherUtils.CardBackgroundColor.copy(alpha = 0.95f)
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Recommendations",  // Changed from "Weather Recommendations" to just "Recommendations"
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = WeatherUtils.BlueSolidColor
+                )
+
+                IconButton(
+                    onClick = { viewModel.getWeatherRecommendations() },
+                    modifier = Modifier
+                        .size(40.dp)  // Increased size for better touch target
+                        .background(
+                            color = WeatherUtils.LightBackground,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Refresh recommendations",
+                        tint = WeatherUtils.BlueSolidColor,
+                        modifier = Modifier.size(24.dp)  // Explicitly set icon size
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Divider(
+                color = WeatherUtils.DividerColor,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            if (recommendations.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = WeatherUtils.BlueSolidColor,
+                        strokeWidth = 3.dp
+                    )
+                }
+            } else {
+                recommendations.forEachIndexed { index, recommendation ->
+                    EnhancedTaskItem(
+                        text = recommendation.text,
+                        isCompleted = recommendation.isCompleted,
+                        onCheckedChange = { viewModel.toggleRecommendation(recommendation.id) }
+                    )
+
+                    if (index < recommendations.size - 1) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun ForecastItem(
     time: String,
     icon: String,
@@ -344,94 +434,6 @@ fun ForecastItem(
                 maxLines = 1,
                 textAlign = TextAlign.Center
             )
-        }
-    }
-}
-
-@Composable
-fun TaskSection(viewModel: WeatherViewModel) {
-    val recommendations by viewModel.recommendations.collectAsState()
-
-    // Request recommendations if empty
-    LaunchedEffect(Unit) {
-        if (recommendations.isEmpty()) {
-            viewModel.getWeatherRecommendations()
-        }
-    }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = WeatherUtils.CardBackgroundColor.copy(alpha = 0.95f)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Weather Recommendations",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = WeatherUtils.BlueSolidColor
-                )
-
-                IconButton(
-                    onClick = { viewModel.getWeatherRecommendations() },
-                    modifier = Modifier
-                        .size(36.dp)
-                        .background(
-                            color = WeatherUtils.LightBackground,
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        .padding(4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = "Refresh recommendations",
-                        tint = WeatherUtils.BlueSolidColor
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Divider(
-                color = WeatherUtils.DividerColor,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
-            if (recommendations.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(
-                        color = WeatherUtils.BlueSolidColor,
-                        strokeWidth = 3.dp
-                    )
-                }
-            } else {
-                recommendations.forEachIndexed { index, recommendation ->
-                    EnhancedTaskItem(
-                        text = recommendation.text,
-                        isCompleted = recommendation.isCompleted,
-                        onCheckedChange = { viewModel.toggleRecommendation(recommendation.id) }
-                    )
-
-                    if (index < recommendations.size - 1) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                    }
-                }
-            }
         }
     }
 }
@@ -494,7 +496,6 @@ fun EnhancedTaskItem(
     }
 }
 
-
 @Composable
 fun WeatherCard(
     location: String,
@@ -531,9 +532,9 @@ fun WeatherCard(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Text(
-                text = WeatherUtils.getWeatherEmoji(condition),
-                fontSize = 64.sp
+            // Replace static emoji with Lottie animation
+            WeatherLottieAnimation(
+                weatherCondition = condition
             )
 
             Spacer(modifier = Modifier.height(8.dp))

@@ -1,5 +1,6 @@
 package com.aco.skycast.ui.screens.auth
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -11,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -18,15 +20,21 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.aco.skycast.R
 import com.aco.skycast.data.model.AuthUiState
 import com.aco.skycast.data.model.AuthViewModel
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
 
+private const val TAG = "SignUpScreen"
 @Composable
 fun SignUpScreen(
     authViewModel: AuthViewModel = viewModel(),
     onSignUpSuccess: () -> Unit = {},
     onLoginClick: () -> Unit = {}
 ) {
+
     val displayName = remember { mutableStateOf("") }
     val email = remember { mutableStateOf("") }
     val password = remember { mutableStateOf("") }
@@ -38,6 +46,16 @@ fun SignUpScreen(
 
     var showError by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
+
+    val context = LocalContext.current
+
+// Google Sign-In result handler
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        Log.d(TAG, "Google sign-in result: ${result.resultCode}")
+        authViewModel.handleGoogleSignInResult(result.data)
+    }
 
     // Check authentication state
     LaunchedEffect(authState) {
@@ -190,24 +208,30 @@ fun SignUpScreen(
         Text(text = "hoặc", modifier = Modifier.padding(vertical = 8.dp), color = Color.Gray)
 
         OutlinedButton(
-            onClick = { /* Handle Google sign-in */ },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Icon(imageVector = Icons.Default.AccountCircle, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Đăng nhập bằng Google")
-        }
+            onClick = {
 
-        OutlinedButton(
-            onClick = { /* Handle Facebook sign-in */ },
+                showError = false
+                Log.d(TAG, "Starting Google sign-in flow")
+                authViewModel.startGoogleSignIn(context, googleSignInLauncher)
+            },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp)
+                .padding(top = 8.dp),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = Color.White
+            )
         ) {
-            Icon(imageVector = Icons.Default.AccountBox, contentDescription = null)
+            Icon(
+                painter = painterResource(id = R.drawable.ic_google),
+                contentDescription = "Google Logo",
+                modifier = Modifier.size(24.dp),
+                tint = Color.Unspecified // Important to show Google's colors
+            )
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Đăng nhập bằng Facebook")
+            Text("Đăng nhập bằng Google", color = Color.Black)
         }
+
+
 
         Spacer(modifier = Modifier.height(24.dp))
 
