@@ -30,7 +30,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.aco.skycast.BuildConfig
-import com.aco.skycast.data.api.GitHubAiClient
+import com.aco.skycast.data.api.GeminiAiClient
 import com.aco.skycast.data.model.WeatherUiState
 import com.aco.skycast.data.model.WeatherViewModel
 import com.aco.skycast.data.reponsitory.ChatRepository
@@ -53,8 +53,8 @@ fun ChatBotDaily(
 ) {
     val weatherState by viewModel.weatherState.collectAsState()
     val scope = rememberCoroutineScope()
-    val token = BuildConfig.GITHUB_TOKEN
-    val gitHubAiClient = remember { GitHubAiClient(token) }
+    val apiKey = BuildConfig.GEMINI_API_KEY // Reuse existing token field or create GEMINI_API_KEY in your build.gradle
+    val geminiAiClient = remember { GeminiAiClient(apiKey) }
     val context = LocalContext.current
     val chatRepository = remember { ChatRepository(context) }
 
@@ -197,12 +197,12 @@ fun ChatBotDaily(
                             currentMessages = messages,
                             updateMessages = { messages = it },
                             weatherState = weatherState,
-                            gitHubAiClient = gitHubAiClient,
+                            aiClient = geminiAiClient,
                             setLoading = { isLoading = it },
                             scope = scope,
                             focusManager = focusManager,
                             chatRepository = chatRepository,
-                            viewModel = viewModel  // Add this parameter
+                            viewModel = viewModel
                         )
                         messageInput = ""
                     }
@@ -220,12 +220,12 @@ fun ChatBotDaily(
                             currentMessages = messages,
                             updateMessages = { messages = it },
                             weatherState = weatherState,
-                            gitHubAiClient = gitHubAiClient,
+                            aiClient = geminiAiClient,
                             setLoading = { isLoading = it },
                             scope = scope,
                             focusManager = focusManager,
                             chatRepository = chatRepository,
-                            viewModel = viewModel  // Add this parameter
+                            viewModel = viewModel
                         )
                         messageInput = ""
                     }
@@ -248,7 +248,7 @@ private fun sendChatMessage(
     currentMessages: List<ChatMessage>,
     updateMessages: (List<ChatMessage>) -> Unit,
     weatherState: WeatherUiState,
-    gitHubAiClient: GitHubAiClient,
+    aiClient: GeminiAiClient,
     setLoading: (Boolean) -> Unit,
     scope: CoroutineScope,
     focusManager: FocusManager,
@@ -294,7 +294,7 @@ private fun sendChatMessage(
             }
 
             // Get response from AI
-            val response = gitHubAiClient.getWeatherInsights(weatherInfo, message)
+            val response = aiClient.getWeatherInsights(weatherInfo, message)
 
             val botMessage = ChatMessage(
                 content = response.trim(),
@@ -316,6 +316,7 @@ private fun sendChatMessage(
         }
     }
 }
+
 @Composable
 fun AnimatedMessageBubble(message: ChatMessage, index: Int) {
     AnimatedVisibility(

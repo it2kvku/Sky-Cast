@@ -3,7 +3,7 @@ package com.aco.skycast.data.model
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aco.skycast.BuildConfig
-import com.aco.skycast.data.api.GitHubAiClient
+import com.aco.skycast.data.api.GeminiAiClient  // Changed from GitHubAiClient
 import com.aco.skycast.data.api.WeatherResponse
 import com.aco.skycast.data.repository.IpLocationRepository
 import com.aco.skycast.data.repository.WeatherRepository
@@ -33,6 +33,9 @@ class WeatherViewModel(
 
     private val _isSearchLoading = MutableStateFlow(false)
     val isSearchLoading: StateFlow<Boolean> = _isSearchLoading
+
+    // Changed from GitHubAiClient to GeminiAiClient
+    private val geminiAiClient = GeminiAiClient(BuildConfig.GEMINI_API_KEY)
 
     fun searchCities(query: String) {
         viewModelScope.launch {
@@ -77,71 +80,82 @@ class WeatherViewModel(
     fun toggleRecommendation(id: String) {
         _recommendations.update { list ->
             list.map {
-                if (it.id == id) it.copy(isCompleted = !it.isCompleted) else it
+                if (it.id == id) it.copy(isCompleted = !it.isCompleted)
+                else it
             }
         }
     }
 
     fun getWeatherRecommendations() {
         viewModelScope.launch {
-            val weatherState = _weatherState.value
-            if (weatherState is WeatherUiState.Success) {
-                val weather = weatherState.data
-                val currentDay = weather.days.firstOrNull()
+            try {
+                val weatherState = _weatherState.value
+                if (weatherState is WeatherUiState.Success) {
+                    val data = weatherState.data
+                    val weatherInfo = buildWeatherInfoString(data)
 
-                // Create weather context similar to ChatBotDaily
-                val weatherContext = """
-                Current location: ${weather.resolvedAddress}
-                Temperature: ${currentDay?.temp ?: "Unknown"}°C
-                Conditions: ${currentDay?.conditions ?: "Unknown"}
-                Humidity: ${currentDay?.humidity ?: "Unknown"}%
-                Wind: ${currentDay?.windspeed ?: "Unknown"} km/h
-            """.trimIndent()
-
-                try {
-                    val gitHubAiClient = GitHubAiClient(BuildConfig.GITHUB_TOKEN)
-                    val response = gitHubAiClient.getWeatherInsights(
-                        weatherContext,
-                        "Give me 3 practical weather recommendations for today based on these conditions. Format as a simple list."
+                    // Modified prompt to request shorter recommendations
+                    val response = geminiAiClient.getWeatherInsights(
+                        weatherInfo,
+                        "Only Generate 5 very brief weather-based recommendations for today (max 10 words each) No Yapping"
                     )
 
-                    // Parse response into recommendations
-                    val recommendations = parseRecommendations(response)
-                    _recommendations.value = recommendations
-                } catch (e: Exception) {
-                    // Fallback to default recommendations if AI fails
-                    _recommendations.value = listOf(
-                        WeatherRecommendation("Check weather updates regularly"),
-                        WeatherRecommendation("Prepare for ${currentDay?.conditions ?: "current"} conditions"),
-                        WeatherRecommendation("Stay hydrated")
-                    )
+                    parseRecommendations(response)
                 }
+            } catch (e: Exception) {
+                _recommendations.value = listOf(
+                    WeatherRecommendation("Error generating recommendations: ${e.message}")
+                )
             }
         }
     }
 
+    private fun buildWeatherInfoString(data: WeatherResponse): String {
+        val currentDay = data.days.firstOrNull()
+
+        return """
+            Location: ${data.resolvedAddress}
+            Temperature: ${currentDay?.temp ?: "N/A"}°C
+            Conditions: ${currentDay?.conditions ?: "Unknown"}
+            Humidity: ${currentDay?.humidity ?: "N/A"}%
+            Wind: ${currentDay?.windspeed ?: "N/A"} km/h
+            Description: ${currentDay?.description ?: "No description available"}
+        """.trimIndent()
+    }
+
     private fun parseRecommendations(aiResponse: String): List<WeatherRecommendation> {
-        // Simple parsing: split by newlines and filter empty lines
-        return aiResponse
+        val parsedRecommendations = aiResponse
             .split("\n")
             .map { line -> line.trim() }
             .filter { it.isNotEmpty() }
             .map { line ->
-                // Remove list markers like "1.", "•", "-" if present
-                val cleanedLine = line.replace(Regex("^[\\d•\\-\\*]+\\.?\\s*"), "")
-                WeatherRecommendation(cleanedLine)
+                // Remove numeric prefixes like "1. " or "- "
+                val cleanLine = line.replace(Regex("^\\d+\\.\\s*|-\\s*"), "")
+                // Truncate to a maximum of 50 characters
+                val shortLine = if (cleanLine.length > 50) {
+                    cleanLine.take(47) + "..."
+                } else {
+                    cleanLine
+                }
+                WeatherRecommendation(shortLine)
             }
-            .take(5) // Limit to 5 recommendations
+            .take(5)
+
+        _recommendations.value = parsedRecommendations
+        return parsedRecommendations
     }
+
     private val _ipCity = MutableStateFlow<String>("")
     val ipCity = _ipCity.asStateFlow()
     var latitude: Double = 0.0
         private set
     var longitude: Double = 0.0
         private set
+
     fun updateIpCity(city: String) {
         _ipCity.value = city
     }
+
     fun getCityFromIp() {
         viewModelScope.launch {
             ipLocationRepository.getIpLocation()
@@ -151,17 +165,15 @@ class WeatherViewModel(
                 .onFailure { /* Handle error */ }
         }
     }
+
     fun fetchWeather(city: String) {
         viewModelScope.launch {
             _weatherState.value = WeatherUiState.Loading
             try {
                 val response = repository.getWeatherByCity(city)
                 _weatherState.value = WeatherUiState.Success(response)
-                latitude = response.latitude
-                longitude = response.longitude
             } catch (e: Exception) {
-                _weatherState.value = WeatherUiState.Error(e.message ?: "Unknown error")
-                e.printStackTrace()
+                _weatherState.value = WeatherUiState.Error(e.message ?: "Unknown error occurred")
             }
         }
     }
@@ -172,11 +184,8 @@ class WeatherViewModel(
             try {
                 val response = repository.getWeatherByCoordinates(lat, lon)
                 _weatherState.value = WeatherUiState.Success(response)
-                latitude = lat
-                longitude = lon
             } catch (e: Exception) {
-                _weatherState.value = WeatherUiState.Error(e.message ?: "Unknown error")
-                e.printStackTrace()
+                _weatherState.value = WeatherUiState.Error(e.message ?: "Unknown error occurred")
             }
         }
     }
