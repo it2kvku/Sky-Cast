@@ -34,6 +34,8 @@ android {
             "\"${secretsProperties.getProperty("GITHUB_TOKEN", "")}\"")
         buildConfigField("String", "WEATHER_API_KEY",
             "\"${secretsProperties.getProperty("WEATHER_API_KEY", "")}\"")
+        buildConfigField("String", "GEMINI_API_KEY",
+            "\"${secretsProperties.getProperty("GEMINI_API_KEY", "")}\"")
     }
 
 
